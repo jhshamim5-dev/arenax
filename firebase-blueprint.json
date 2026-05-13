@@ -1,0 +1,87 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role and wallet",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "gamerTag": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "walletBalance": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "firstName", "lastName", "gamerTag", "role", "walletBalance", "createdAt"]
+    },
+    "Tournament": {
+      "title": "Tournament",
+      "description": "Tournament details",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "game": { "type": "string" },
+        "prizePool": { "type": "number" },
+        "entryFee": { "type": "number" },
+        "status": { "type": "string", "enum": ["upcoming", "active", "completed"] },
+        "maxPlayers": { "type": "number" },
+        "registeredPlayers": { "type": "number" },
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "image": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "game", "prizePool", "entryFee", "status", "maxPlayers", "registeredPlayers", "participants", "image", "description", "createdAt"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Deposit and withdrawal requests",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["deposit", "withdrawal"] },
+        "method": { "type": "string", "enum": ["bkash", "nagad", "binance"] },
+        "amount": { "type": "number" },
+        "accountInfo": { "type": "string" },
+        "trxId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "method", "amount", "accountInfo", "status", "createdAt"]
+    },
+    "TournamentScore": {
+      "title": "TournamentScore",
+      "description": "User scores for tournaments like typing",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "tournamentId": { "type": "string" },
+        "score": { "type": "number" },
+        "wpm": { "type": "number" },
+        "accuracy": { "type": "number" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "tournamentId", "score", "wpm", "accuracy", "startedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "User" },
+      "description": "User profiles"
+    },
+    "/tournaments/{tournamentId}": {
+      "schema": { "$ref": "Tournament" },
+      "description": "Tournaments available"
+    },
+    "/tournaments/{tournamentId}/scores/{userId}": {
+      "schema": { "$ref": "TournamentScore" },
+      "description": "Scores per tournament by user"
+    },
+    "/transactions/{transactionId}": {
+      "schema": { "$ref": "Transaction" },
+      "description": "Deposit and Withdrawal Transactions"
+    }
+  }
+}

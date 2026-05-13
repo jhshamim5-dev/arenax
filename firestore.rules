@@ -1,0 +1,153 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) { 
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { 
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; 
+    }
+
+    // Validation for User
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'firstName', 'lastName', 'gamerTag', 'role', 'walletBalance', 'createdAt']) &&
+             data.email is string && data.email.size() <= 100 &&
+             data.firstName is string && data.firstName.size() <= 50 &&
+             data.lastName is string && data.lastName.size() <= 50 &&
+             data.gamerTag is string && data.gamerTag.size() <= 50 &&
+             data.role in ['user', 'admin'] &&
+             data.walletBalance is number &&
+             data.createdAt == request.time;
+    }
+    function isValidUserUpdate(data) {
+      return data.email is string && data.email.size() <= 100 &&
+             data.firstName is string && data.firstName.size() <= 50 &&
+             data.lastName is string && data.lastName.size() <= 50 &&
+             data.gamerTag is string && data.gamerTag.size() <= 50 &&
+             data.role in ['user', 'admin'] &&
+             data.walletBalance is number;
+    }
+
+    // Validation for Tournament
+    function isValidTournament(data) {
+      return data.keys().hasAll(['name', 'game', 'prizePool', 'entryFee', 'status', 'maxPlayers', 'registeredPlayers', 'participants', 'image', 'description', 'createdAt']) &&
+             data.name is string && data.name.size() <= 100 &&
+             data.game is string && data.game.size() <= 50 &&
+             data.prizePool is number &&
+             data.entryFee is number &&
+             data.status in ['upcoming', 'active', 'completed'] &&
+             data.maxPlayers is number &&
+             data.registeredPlayers is number &&
+             data.participants is list && data.participants.size() <= 60 &&
+             data.image is string && data.image.size() <= 500 &&
+             data.description is string && data.description.size() <= 2000 &&
+             data.createdAt == request.time;
+    }
+    function isValidTournamentUpdate(data) {
+      return data.name is string && data.name.size() <= 100 &&
+             data.game is string && data.game.size() <= 50 &&
+             data.prizePool is number &&
+             data.entryFee is number &&
+             data.status in ['upcoming', 'active', 'completed'] &&
+             data.maxPlayers is number &&
+             data.registeredPlayers is number &&
+             data.participants is list && data.participants.size() <= 60 &&
+             data.image is string && data.image.size() <= 500 &&
+             data.description is string && data.description.size() <= 2000;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // Admin can list users
+      allow list: if isAdmin();
+      
+      // Users can create their own profile when they first login. 
+      // They can only create it with role='user' unless they are somehow bootstrapping.
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidUser(incoming()) && (incoming().role == 'user' || (incoming().role == 'admin' && request.auth.token.email in ['jhshamim5@gmail.com']));
+      
+      // Update
+      allow update: if (
+        (isAdmin() && isValidId(userId)) ||
+        (isSignedIn() && isValidId(userId) && isValidUserUpdate(incoming()) && (
+          (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['firstName', 'lastName', 'gamerTag']) && incoming().role == existing().role && incoming().walletBalance == existing().walletBalance) ||
+          (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['walletBalance']) && incoming().walletBalance < existing().walletBalance)
+        ))
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    match /tournaments/{tournamentId} {
+      allow get: if isValidId(tournamentId);
+      allow list: if true; // Publicly visible
+
+      allow create: if isAdmin() && isValidId(tournamentId) && isValidTournament(incoming());
+      // Admin can update everything. User can join a tournament (updating participants and registeredPlayers)
+      allow update: if isValidId(tournamentId) && isValidTournamentUpdate(incoming()) && (
+        isAdmin() || 
+        (
+          isSignedIn() && 
+          incoming().diff(existing()).affectedKeys().hasOnly(['participants', 'registeredPlayers']) &&
+          incoming().registeredPlayers == existing().registeredPlayers + 1 &&
+          incoming().participants.size() == existing().participants.size() + 1 &&
+          request.auth.uid in incoming().participants &&
+          !(request.auth.uid in existing().participants) &&
+          existing().registeredPlayers < existing().maxPlayers &&
+          existing().status == 'upcoming'
+        )
+      );
+      allow delete: if isAdmin();
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['userId', 'type', 'method', 'amount', 'accountInfo', 'status', 'createdAt']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.type in ['deposit', 'withdrawal'] &&
+             data.method in ['bkash', 'nagad', 'binance'] &&
+             data.amount is number && data.amount > 0 &&
+             data.accountInfo is string && data.accountInfo.size() <= 100 &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             data.createdAt == request.time;
+    }
+
+    match /transactions/{transactionId} {
+      allow get: if isSignedIn() && (request.auth.uid == existing().userId || isAdmin());
+      allow list: if isSignedIn() && (request.auth.uid == resource.data.userId || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == incoming().userId && incoming().status == 'pending' && isValidTransaction(incoming());
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Validation for TournamentScore
+    function isValidTournamentScore(data) {
+      return data.keys().hasAll(['userId', 'tournamentId', 'score', 'wpm', 'accuracy', 'startedAt']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.tournamentId is string && data.tournamentId.size() <= 128 &&
+             data.score is number &&
+             data.wpm is number &&
+             data.accuracy is number &&
+             data.startedAt is string;
+    }
+
+    match /tournaments/{tournamentId}/scores/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if true; // Leaderboard is public
+      // Only the user themselves can write their score
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidTournamentScore(incoming());
+      allow update: if isSignedIn() && request.auth.uid == userId && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['score', 'wpm', 'accuracy', 'completedAt']) &&
+                    incoming().score is number && incoming().wpm is number && incoming().accuracy is number && incoming().completedAt is string;
+      allow delete: if isAdmin();
+    }
+  }
+}
