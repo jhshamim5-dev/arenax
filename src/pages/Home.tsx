@@ -121,7 +121,7 @@ export default function Home() {
                 >
                   <div className="relative h-48 rounded-xl overflow-hidden mb-4">
                     <img 
-                      src={tournament.image || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop'} 
+                      src={tournament.image || 'https://6a040c8746fc04f7c2e16b25.imgix.net/3kQCtpnfHoUq5cBsLqKTFk-scaled-1-1024x576.jpg?q=80&w=800&auto=format&fit=crop'} 
                       alt={tournament.name}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
