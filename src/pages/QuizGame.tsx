@@ -31,7 +31,7 @@ const QUESTIONS = [
   { q: "What is the highest peak in Bangladesh?", opts: ["Keokradong", "Saka Haphong", "Tajingdong", "Dimali"], a: 1 },
 ];
 
-const TIME_PER_QUESTION = 5; 
+const TIME_PER_QUESTION = 20; 
 
 export default function QuizGame() {
   const { id } = useParams();
