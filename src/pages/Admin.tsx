@@ -191,7 +191,7 @@ export default function Admin() {
         registeredPlayers: 0,
         participants: [],
         description: "Answer 20 questions correctly as fast as possible to win!",
-        image: 'https://6a040c8746fc04f7c2e16b25.imgix.net/3kQCtpnfHoUq5cBsLqKTFk-scaled-1-1024x576.jpg',
+        image: 'https://6a040c8746fc04f7c2e16b25.imgix.net/thin-line-quiz-icon-with-brain-KPG9GD.jpg',
         createdAt: serverTimestamp()
       });
       toast.success('Seeded exactly 1 Typing Tournament and 1 Quiz Tournament! (Old tournaments deleted)');
