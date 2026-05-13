@@ -152,7 +152,7 @@ export default function Admin() {
         registeredPlayers: 0,
         participants: [],
         description: "Test your typing speed! The fastest typist takes home the 400 TK prize pool.",
-        image: 'https://images.unsplash.com/photo-1555680202-c86f0e12f086?q=80&w=800&auto=format&fit=crop',
+        image: 'https://6a040c8746fc04f7c2e16b25.imgix.net/3kQCtpnfHoUq5cBsLqKTFk-scaled-1-1024x576.jpg?q=80&w=800&auto=format&fit=crop',
         createdAt: serverTimestamp()
       });
       alert('Seeded exactly 1 Typing Tournament! (Old tournaments deleted)');
