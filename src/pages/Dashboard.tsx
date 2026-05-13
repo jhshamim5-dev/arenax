@@ -99,7 +99,7 @@ export default function WalletPage() {
   const getDepositAddress = () => {
     if (method === 'bkash') return '01934432370';
     if (method === 'nagad') return '01934432370';
-    if (method === 'binance') return '88392983';
+    if (method === 'binance') return '1132989127';
     return '';
   };
 
