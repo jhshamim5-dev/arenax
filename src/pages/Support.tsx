@@ -14,7 +14,7 @@ export default function Support() {
 
       <div className="grid grid-cols-1 gap-6">
         <a 
-          href="https://t.me/Tamim1m" 
+          href="https://t.me/your_telegram_username" 
           target="_blank" 
           rel="noopener noreferrer"
           className="glass-panel p-6 rounded-2xl flex items-center justify-between group hover:border-[#0088cc] transition-colors"
@@ -32,7 +32,7 @@ export default function Support() {
         </a>
 
         <a 
-          href="https://t.me/ZniWatch" 
+          href="https://t.me/your_telegram_group" 
           target="_blank" 
           rel="noopener noreferrer"
           className="glass-panel p-6 rounded-2xl flex items-center justify-between group hover:border-[#0088cc] transition-colors"
@@ -50,7 +50,7 @@ export default function Support() {
         </a>
 
         <a 
-          href="https://wa.me/+8801934432370" 
+          href="https://wa.me/your_whatsapp_number" 
           target="_blank" 
           rel="noopener noreferrer"
           className="glass-panel p-6 rounded-2xl flex items-center justify-between group hover:border-[#25D366] transition-colors"

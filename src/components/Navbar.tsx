@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logOut } from '../lib/firebase';
+import toast from 'react-hot-toast';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -44,7 +45,7 @@ export default function Navbar() {
                   onClick={(e) => {
                     if(link.path === '/refer') {
                       e.preventDefault();
-                      alert(t('coming_soon'));
+                      toast(t('coming_soon'), { icon: '🔜' });
                     }
                   }}
                   className={`text-sm font-medium transition-colors hover:text-white inline-flex items-center ${
@@ -136,7 +137,7 @@ export default function Navbar() {
               onClick={(e) => {
                 if(link.path === '/refer') {
                   e.preventDefault();
-                  alert(t('coming_soon'));
+                  toast(t('coming_soon'), { icon: '🔜' });
                 } else {
                   setIsOpen(false);
                 }

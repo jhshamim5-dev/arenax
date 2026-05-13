@@ -130,13 +130,14 @@ service cloud.firestore {
 
     // Validation for TournamentScore
     function isValidTournamentScore(data) {
-      return data.keys().hasAll(['userId', 'tournamentId', 'score', 'wpm', 'accuracy', 'startedAt']) &&
+      return data.keys().hasAll(['userId', 'tournamentId', 'score', 'startedAt']) &&
              data.userId is string && data.userId.size() <= 128 &&
              data.tournamentId is string && data.tournamentId.size() <= 128 &&
              data.score is number &&
-             data.wpm is number &&
-             data.accuracy is number &&
-             data.startedAt is string;
+             data.startedAt is string &&
+             (data.keys().hasAll(['wpm']) ? data.wpm is number : true) &&
+             (data.keys().hasAll(['accuracy']) ? data.accuracy is number : true) &&
+             (data.keys().hasAll(['timeTaken']) ? data.timeTaken is number : true);
     }
 
     match /tournaments/{tournamentId}/scores/{userId} {
@@ -145,8 +146,9 @@ service cloud.firestore {
       // Only the user themselves can write their score
       allow create: if isSignedIn() && request.auth.uid == userId && isValidTournamentScore(incoming());
       allow update: if isSignedIn() && request.auth.uid == userId && 
-                    incoming().diff(existing()).affectedKeys().hasOnly(['score', 'wpm', 'accuracy', 'completedAt']) &&
-                    incoming().score is number && incoming().wpm is number && incoming().accuracy is number && incoming().completedAt is string;
+                    incoming().diff(existing()).affectedKeys().hasOnly(['score', 'wpm', 'accuracy', 'timeTaken', 'completedAt']) &&
+                    incoming().score is number && 
+                    (incoming().keys().hasAll(['completedAt']) ? incoming().completedAt is string : true);
       allow delete: if isAdmin();
     }
   }

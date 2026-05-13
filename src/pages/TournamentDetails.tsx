@@ -1,12 +1,13 @@
 import AnimatedPage from '../components/AnimatedPage';
 import { useEffect, useState } from 'react';
-import { doc, getDoc, updateDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, onSnapshot, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Users, Trophy, ChevronLeft } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/firestore_errors';
+import toast from 'react-hot-toast';
 
 export default function TournamentDetails() {
   const { id } = useParams();
@@ -34,20 +35,20 @@ export default function TournamentDetails() {
 
   const handleJoin = async () => {
     if (!currentUser || !userProfile) {
-      alert('Please login first');
+      toast.error('Please login first');
       return navigate('/login');
     }
     
     if (tournament.registeredPlayers >= tournament.maxPlayers) {
-      return alert('Tournament is full!');
+      return toast.error('Tournament is full!');
     }
     
     if (tournament.participants?.includes(currentUser.uid)) {
-      return alert('You have already joined this tournament.');
+      return toast.error('You have already joined this tournament.');
     }
 
     if ((userProfile.walletBalance || 0) < tournament.entryFee) {
-      return alert(`Insufficient balance! You need ${tournament.entryFee} TK but have ${(userProfile.walletBalance || 0).toFixed(2)} TK. Please deposit under Wallet.`);
+      return toast.error(`Insufficient balance! You need ${tournament.entryFee} TK but have ${(userProfile.walletBalance || 0).toFixed(2)} TK. Please deposit under Wallet.`);
     }
 
     if (!confirm(`Are you sure you want to join? This will deduct ${tournament.entryFee} TK from your wallet.`)) {
@@ -56,22 +57,33 @@ export default function TournamentDetails() {
 
     setIsJoining(true);
     try {
-      // We must deduct balance AND join tournament. 
-      // Firestore rules allow deducting own balance.
-      // We do this concurrently (or sequentially).
-      
       const newBalance = userProfile.walletBalance - tournament.entryFee;
+      
+      // Update balance
       await updateDoc(doc(db, 'users', currentUser.uid), { walletBalance: newBalance });
       
+      // Update tournament
       await updateDoc(doc(db, 'tournaments', tournament.id), {
         registeredPlayers: tournament.registeredPlayers + 1,
         participants: arrayUnion(currentUser.uid)
       });
       
-      alert('Successfully joined the tournament!');
+      // Add transaction manually
+      const txRef = doc(collection(db, 'transactions'));
+      await setDoc(txRef, {
+        userId: currentUser.uid,
+        type: 'entry_fee',
+        method: 'system',
+        amount: tournament.entryFee,
+        accountInfo: `Joined ${tournament.name}`,
+        status: 'approved',
+        createdAt: serverTimestamp()
+      });
+
+      toast.success('Successfully joined the tournament!');
     } catch (e: any) {
       console.error(e);
-      alert('Failed to join: ' + e.message);
+      toast.error('Failed to join: ' + e.message);
     } finally {
       setIsJoining(false);
     }
@@ -147,6 +159,13 @@ export default function TournamentDetails() {
                 className="w-full py-4 rounded-xl font-bold uppercase tracking-widest text-black bg-[var(--color-accent-brand)] hover:brightness-110 shadow-[0_0_20px_rgba(205,255,100,0.4)] transition-all hover:scale-[1.02]"
               >
                 Play Typing Game
+              </button>
+            ) : tournament.status === 'active' && isJoined && tournament.game === 'Quiz' ? (
+              <button 
+                onClick={() => navigate(`/play/quiz/${id}`)}
+                className="w-full py-4 rounded-xl font-bold uppercase tracking-widest text-black bg-[var(--color-primary-brand)] hover:brightness-110 shadow-[0_0_20px_rgba(123,63,228,0.4)] transition-all hover:scale-[1.02]"
+              >
+                Play Quiz Game
               </button>
             ) : tournament.status === 'active' && isJoined ? (
                <button disabled className="w-full py-4 rounded-xl font-bold uppercase tracking-widest bg-green-500/20 text-green-400 border border-green-500/30">

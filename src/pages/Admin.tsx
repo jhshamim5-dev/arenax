@@ -6,6 +6,7 @@ import { db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore_errors';
 import { Trash2, ShieldPlus, CheckCircle, XCircle } from 'lucide-react';
 import { UserProfile } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 interface UserData extends UserProfile {
   id: string;
@@ -14,7 +15,7 @@ interface UserData extends UserProfile {
 interface Transaction {
   id: string;
   userId: string;
-  type: 'deposit' | 'withdrawal';
+  type: 'deposit' | 'withdrawal' | 'entry_fee' | 'winning';
   method: string;
   amount: number;
   accountInfo: string;
@@ -72,19 +73,16 @@ export default function Admin() {
   const handleStartTournament = async (tId: string) => {
     try {
       await updateDoc(doc(db, 'tournaments', tId), { status: 'active' });
-      alert('Tournament started!');
+      toast.success('Tournament started!');
     } catch(e) {
       handleFirestoreError(e, OperationType.UPDATE, `tournaments/${tId}`);
     }
   };
 
-  // Removed createTypes since the data is supposed to just stay there and the user wants to start them manually.
-  // Although the user asked to be able to start manually without 50 players, this functionality already exists! The 'Start' button sets status to 'active' instantly. So testing is fully supported.
-
   const handleCompleteTournament = async (tId: string) => {
     try {
       await updateDoc(doc(db, 'tournaments', tId), { status: 'completed' });
-      alert('Tournament completed!');
+      toast.success('Tournament completed!');
     } catch(e) {
       handleFirestoreError(e, OperationType.UPDATE, `tournaments/${tId}`);
     }
@@ -94,10 +92,39 @@ export default function Admin() {
     const amountStr = prompt(`Enter new absolute balance amount for user:`);
     if (amountStr === null) return;
     const amount = Number(amountStr);
-    if (isNaN(amount) || amount < 0) return alert('Invalid amount');
+    if (isNaN(amount) || amount < 0) return toast.error('Invalid amount');
     try {
       await updateDoc(doc(db, 'users', userId), { walletBalance: amount });
-      alert('Balance updated successfully!');
+      toast.success('Balance updated successfully!');
+    } catch (error) {
+       handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
+    }
+  };
+
+  const handleSendPrize = async (userId: string, currentBalance: number) => {
+    const amountStr = prompt(`Enter prize amount to send to user:`);
+    if (amountStr === null) return;
+    const amount = Number(amountStr);
+    if (isNaN(amount) || amount <= 0) return toast.error('Invalid amount');
+    
+    const reason = prompt(`Enter reason (e.g. Winner of Tournament xyz):`);
+    if (!reason) return;
+
+    try {
+      await updateDoc(doc(db, 'users', userId), { walletBalance: currentBalance + amount });
+      
+      const txRef = doc(collection(db, 'transactions'));
+      await setDoc(txRef, {
+        userId,
+        type: 'winning',
+        method: 'system',
+        amount,
+        accountInfo: reason,
+        status: 'approved',
+        createdAt: serverTimestamp()
+      });
+
+      toast.success('Prize sent successfully!');
     } catch (error) {
        handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
     }
@@ -108,23 +135,23 @@ export default function Admin() {
     try {
       if (newStatus === 'approved') {
         const user = users.find(u => u.id === tx.userId);
-        if (!user) return alert('User not found!');
+        if (!user) return toast.error('User not found!');
         const newBalance = tx.type === 'deposit' 
           ? (user.walletBalance || 0) + tx.amount
           : (user.walletBalance || 0) - tx.amount;
-        if (newBalance < 0) return alert('User cannot have negative balance!');
+        if (newBalance < 0) return toast.error('User cannot have negative balance!');
         await updateDoc(doc(db, 'users', tx.userId), { walletBalance: newBalance });
       }
       await updateDoc(doc(db, 'transactions', tx.id), { status: newStatus });
-      alert(`Transaction ${newStatus} successfully!`);
+      toast.success(`Transaction ${newStatus} successfully!`);
     } catch (error) {
        handleFirestoreError(error, OperationType.UPDATE, `transactions/${tx.id}`);
-       alert('Transaction action failed.');
+       toast.error('Transaction action failed.');
     }
   };
 
   const handleDeleteUser = async (id: string, role: string) => {
-    if (role === 'admin') return alert("Cannot delete other admins from UI.");
+    if (role === 'admin') return toast.error("Cannot delete other admins from UI.");
     if(confirm("Delete this user?")) {
       try {
         await deleteDoc(doc(db, 'users', id));
@@ -136,7 +163,6 @@ export default function Admin() {
 
   const createTypes = async () => {
     try {
-      // First, delete existing tournaments
       const snap = await getDocs(collection(db, 'tournaments'));
       for (const tDoc of snap.docs) {
         await deleteDoc(doc(db, 'tournaments', tDoc.id));
@@ -152,13 +178,26 @@ export default function Admin() {
         registeredPlayers: 0,
         participants: [],
         description: "Test your typing speed! The fastest typist takes home the 400 TK prize pool.",
-        image: 'https://6a040c8746fc04f7c2e16b25.imgix.net/3kQCtpnfHoUq5cBsLqKTFk-scaled-1-1024x576.jpg?q=80&w=800&auto=format&fit=crop',
+        image: 'https://6a040c8746fc04f7c2e16b25.imgix.net/3kQCtpnfHoUq5cBsLqKTFk-scaled-1-1024x576.jpg',
         createdAt: serverTimestamp()
       });
-      alert('Seeded exactly 1 Typing Tournament! (Old tournaments deleted)');
+      await setDoc(doc(collection(db, 'tournaments')), {
+        name: "Brain Teaser Quiz",
+        game: "Quiz",
+        prizePool: 400,
+        entryFee: 10,
+        status: 'upcoming',
+        maxPlayers: 50,
+        registeredPlayers: 0,
+        participants: [],
+        description: "Answer 20 questions correctly as fast as possible to win!",
+        image: 'https://6a040c8746fc04f7c2e16b25.imgix.net/3kQCtpnfHoUq5cBsLqKTFk-scaled-1-1024x576.jpg',
+        createdAt: serverTimestamp()
+      });
+      toast.success('Seeded exactly 1 Typing Tournament and 1 Quiz Tournament! (Old tournaments deleted)');
     } catch (e) {
       console.error(e);
-      alert('Failed to seed');
+      toast.error('Failed to seed');
     }
   };
 
@@ -212,9 +251,10 @@ export default function Admin() {
                          {u.role}
                        </span>
                      </td>
-                     <td className="px-4 py-3 text-[var(--color-accent-brand)] font-bold">${u.walletBalance?.toFixed(2)}</td>
-                     <td className="px-4 py-3">
+                     <td className="px-4 py-3 text-[var(--color-accent-brand)] font-bold">{u.walletBalance?.toFixed(2)} TK</td>
+                     <td className="px-4 py-3 flex gap-2">
                         <button onClick={() => handleUpdateBalance(u.id, u.walletBalance)} className="text-xs bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded">Edit</button>
+                        <button onClick={() => handleSendPrize(u.id, u.walletBalance)} className="text-xs bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500 hover:text-black px-2 py-1 rounded">Send Prize</button>
                      </td>
                      <td className="px-4 py-3">
                        <button onClick={() => handleDeleteUser(u.id, u.role)} className="p-1 text-gray-500 hover:text-red-500">
@@ -247,14 +287,14 @@ export default function Admin() {
                    <tr key={tx.id} className="border-b border-[var(--color-gaming-border)] hover:bg-white/5">
                      <td className="px-4 py-3 font-medium text-white">
                         {u?.gamerTag || 'Unknown'} <br/>
-                        <span className={`text-[10px] uppercase ${tx.type === 'deposit' ? 'text-green-400' : 'text-red-400'}`}>{tx.type}</span>
+                        <span className={`text-[10px] uppercase ${tx.type === 'deposit' || tx.type === 'winning' ? 'text-green-400' : 'text-red-400'}`}>{tx.type.replace('_', ' ')}</span>
                      </td>
                      <td className="px-4 py-3">
                         Method: <span className="uppercase text-white">{tx.method}</span> <br/>
-                        Num: {tx.accountInfo} <br/>
+                        Info: {tx.accountInfo} <br/>
                         {tx.type === 'deposit' && `TrxID: ${tx.trxId}`}
                      </td>
-                     <td className="px-4 py-3 font-bold text-white">${tx.amount.toFixed(2)}</td>
+                     <td className="px-4 py-3 font-bold text-white">{tx.amount.toFixed(2)} TK</td>
                      <td className="px-4 py-3">
                        <span className={`px-2 py-1 text-[10px] uppercase rounded font-bold ${tx.status === 'approved' ? 'bg-green-500/20 text-green-400' : tx.status === 'rejected' ? 'bg-red-500/20 text-red-500' : 'bg-yellow-500/20 text-yellow-500'}`}>
                          {tx.status}
@@ -283,7 +323,7 @@ export default function Admin() {
            <div className="overflow-x-auto">
              <div className="mb-4">
                <button onClick={createTypes} className="bg-[var(--color-primary-brand)] px-4 py-2 rounded text-white text-sm font-bold uppercase">
-                 Seed 1 Typing Tournament
+                 Seed Tournaments
                </button>
              </div>
              <table className="w-full text-left text-sm text-gray-400">

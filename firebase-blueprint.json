@@ -52,7 +52,7 @@
     },
     "TournamentScore": {
       "title": "TournamentScore",
-      "description": "User scores for tournaments like typing",
+      "description": "User scores for tournaments like typing and quiz",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
@@ -60,10 +60,11 @@
         "score": { "type": "number" },
         "wpm": { "type": "number" },
         "accuracy": { "type": "number" },
+        "timeTaken": { "type": "number" },
         "startedAt": { "type": "string", "format": "date-time" },
         "completedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["userId", "tournamentId", "score", "wpm", "accuracy", "startedAt"]
+      "required": ["userId", "tournamentId", "score", "startedAt"]
     }
   },
   "firestore": {

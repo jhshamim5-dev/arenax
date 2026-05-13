@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { handleFirestoreError, OperationType } from '../lib/firestore_errors';
 import { ChevronLeft, Trophy, Keyboard } from 'lucide-react';
 import { motion } from 'motion/react';
+import toast from 'react-hot-toast';
 
 // Hard typing text
 const TYPING_TEXT = "Accommodating anomalous asynchronous architectures requires scrupulous synchronization. Furthermore, idiosyncratic implementations inevitably instigate intermittent infrastructural instability. Nevertheless, quintessential qualitative quantification yields phenomenological perspectives, simultaneously superseding superficially systemic semantics. Bureaucratic bottlenecks frequently facilitate flippant foolishness and fundamentally fabricate fictitious friction. Consequently, developers demonstrate disproportionate dedication toward troubleshooting theoretical technicalities rather than prioritizing pragmatic problem-solving paradigms.";
@@ -75,7 +76,7 @@ export default function TypingGame() {
 
   const startGame = async () => {
     if (isMobile) {
-      return alert("Must participate using PC only");
+      return toast.error("Must participate using PC only");
     }
     if (!scoreDoc) {
       try {

@@ -49,6 +49,14 @@ export default function Leaderboard() {
           };
         }));
         
+        // Final tie-breaker sort in memory
+        scoreDocs.sort((a: any, b: any) => {
+          if (b.score !== a.score) return b.score - a.score;
+          if (a.timeTaken !== undefined && b.timeTaken !== undefined) return a.timeTaken - b.timeTaken;
+          if (a.wpm !== undefined && b.wpm !== undefined) return b.wpm - a.wpm;
+          return 0;
+        });
+
         setScores(scoreDocs);
       } catch (e) {
         handleFirestoreError(e, OperationType.LIST, 'scores');
@@ -120,8 +128,9 @@ export default function Leaderboard() {
                      <div className="text-right">
                        <p className="font-display font-extrabold text-2xl text-[var(--color-primary-brand)]">Score: {s.score}</p>
                        <div className="flex gap-3 text-xs text-gray-400 mt-1 uppercase font-bold">
-                         <span>WPM: {s.wpm}</span>
-                         <span>Acc: {s.accuracy}%</span>
+                         {s.wpm !== undefined && <span>WPM: {s.wpm}</span>}
+                         {s.accuracy !== undefined && <span>Acc: {s.accuracy}%</span>}
+                         {s.timeTaken !== undefined && <span className="text-yellow-500">Time: {s.timeTaken.toFixed(1)}s</span>}
                        </div>
                      </div>
                    </div>

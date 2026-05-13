@@ -1,17 +1,19 @@
 import AnimatedPage from '../components/AnimatedPage';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { Wallet, LogOut, ArrowRightLeft, Upload, ArrowDownToLine, Clock, CalendarDays } from 'lucide-react';
+import { Wallet, LogOut, ArrowRightLeft, Upload, ArrowDownToLine, Clock, CalendarDays, KeySquare, Trophy } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { collection, query, where, orderBy, onSnapshot, serverTimestamp, setDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore_errors';
+import toast from 'react-hot-toast';
 
 interface Transaction {
   id: string;
-  type: 'deposit' | 'withdrawal';
-  method: 'bkash' | 'nagad' | 'binance';
+  type: 'deposit' | 'withdrawal' | 'entry_fee' | 'winning';
+  method: string;
   amount: number;
   accountInfo: string;
   trxId?: string;
@@ -55,11 +57,11 @@ export default function WalletPage() {
     if (!accountInfo || !amount || (tab === 'deposit' && !trxId)) return;
     
     const numAmount = Number(amount);
-    if (numAmount <= 0) return alert('Amount must be positive');
+    if (numAmount <= 0) return toast.error('Amount must be positive');
 
     if (tab === 'withdraw') {
       if ((userProfile?.walletBalance || 0) < numAmount) {
-        return alert('Insufficient balance');
+        return toast.error('Insufficient balance');
       }
     }
 
@@ -76,13 +78,13 @@ export default function WalletPage() {
         status: 'pending',
         createdAt: serverTimestamp()
       });
-      alert('Request submitted successfully!');
+      toast.success('Request submitted successfully!');
       setAccountInfo('');
       setAmount('');
       setTrxId('');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'transactions');
-      alert('Failed to submit. Check console.');
+      toast.error('Failed to submit. Check console.');
     } finally {
       setIsSubmitting(false);
     }
@@ -101,6 +103,30 @@ export default function WalletPage() {
     return '';
   };
 
+  const getTxDetails = (tx: Transaction) => {
+    let cls = 'bg-gray-500/10 text-gray-400';
+    let icon = <Clock size={20} />;
+    let isPositive = false;
+
+    if (tx.type === 'deposit') {
+      cls = 'bg-green-500/10 text-green-400';
+      icon = <ArrowDownToLine size={20} />;
+      isPositive = true;
+    } else if (tx.type === 'withdrawal') {
+      cls = 'bg-red-500/10 text-red-500';
+      icon = <Upload size={20} />;
+    } else if (tx.type === 'entry_fee') {
+      cls = 'bg-orange-500/10 text-orange-500';
+      icon = <KeySquare size={20} />;
+    } else if (tx.type === 'winning') {
+      cls = 'bg-yellow-500/10 text-yellow-400';
+      icon = <Trophy size={20} />;
+      isPositive = true;
+    }
+
+    return { cls, icon, isPositive };
+  };
+
   return (
     <AnimatedPage className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
@@ -112,7 +138,7 @@ export default function WalletPage() {
         </div>
         <div className="glass-panel px-6 py-4 rounded-xl border-t-2 border-t-[var(--color-accent-brand)] flex items-center gap-4">
           <p className="text-sm font-bold uppercase tracking-widest text-gray-400">Balance</p>
-          <p className="text-3xl font-display text-white">${(userProfile?.walletBalance || 0).toFixed(2)}</p>
+          <p className="text-3xl font-display text-white">{(userProfile?.walletBalance || 0).toFixed(2)} TK</p>
         </div>
       </div>
 
@@ -196,22 +222,24 @@ export default function WalletPage() {
                 No transactions found.
               </div>
             ) : (
-              transactions.map(tx => (
+              transactions.map(tx => {
+                const { cls, icon, isPositive } = getTxDetails(tx);
+                return (
                 <div key={tx.id} className="bg-black/40 border border-white/5 p-4 rounded-xl flex items-center justify-between group hover:bg-white/5 transition-colors">
                   <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-lg ${tx.type === 'deposit' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-500'}`}>
-                      {tx.type === 'deposit' ? <ArrowDownToLine size={20} /> : <Upload size={20} />}
+                    <div className={`p-3 rounded-lg ${cls}`}>
+                      {icon}
                     </div>
                     <div>
-                      <h4 className="font-bold text-white uppercase tracking-wider text-sm">{tx.method}</h4>
+                      <h4 className="font-bold text-white uppercase tracking-wider text-sm">{tx.type.replace('_', ' ')}</h4>
                       <div className="flex gap-3 text-xs text-gray-500 mt-1">
                         <span className="flex items-center gap-1"><CalendarDays size={12} /> {tx.createdAt ? new Date(tx.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'}</span>
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`font-display font-bold text-lg ${tx.type === 'deposit' ? 'text-green-400' : 'text-white'}`}>
-                      {tx.type === 'deposit' ? '+' : '-'}${tx.amount.toFixed(2)}
+                    <p className={`font-display font-bold text-lg ${isPositive ? 'text-green-400' : 'text-white'}`}>
+                      {isPositive ? '+' : '-'}{tx.amount.toFixed(2)} TK
                     </p>
                     <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
                       tx.status === 'approved' ? 'bg-green-500/20 text-green-400' : 
@@ -222,7 +250,7 @@ export default function WalletPage() {
                     </span>
                   </div>
                 </div>
-              ))
+              )})
             )}
           </div>
         </div>
