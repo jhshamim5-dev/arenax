@@ -2,7 +2,7 @@
   "projectId": "ai-studio-applet-webapp-c14c7",
   "appId": "1:534215355621:web:9d4e803f82b53ef5d1380c",
   "apiKey": "AIzaSyC6afwBfb5UkNSJBYMDQ9YCcUez_8xG578",
-  "authDomain": "ai-studio-applet-webapp-c14c7.firebaseapp.com",
+  "authDomain": "https://arenax-beta.vercel.app",
   "firestoreDatabaseId": "ai-studio-7553485f-56d2-4587-81d6-9aa12b13180f",
   "storageBucket": "ai-studio-applet-webapp-c14c7.firebasestorage.app",
   "messagingSenderId": "534215355621",
